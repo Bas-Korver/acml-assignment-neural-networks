@@ -1,5 +1,8 @@
 import numpy as np
 
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+def sigmoid(x, derivative: bool = False):
+    if derivative:
+        return sigmoid(x) * (1 - sigmoid(x))
+    else:
+        return 1 / (1 + np.exp(-x))
