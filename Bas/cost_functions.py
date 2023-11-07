@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def mean_squared_error(y_true: np.ndarray, y_pred: np.ndarray, derivative: bool = False) -> float:
+def mean_squared_error(y_pred: np.ndarray, y_true: np.ndarray, derivative: bool = False) -> float:
     """
     Calculates the mean squared error (MSE) between the true and predicted values.
 
@@ -14,10 +14,10 @@ def mean_squared_error(y_true: np.ndarray, y_pred: np.ndarray, derivative: bool 
     if derivative:
         return np.sum(y_pred - y_true) / len(y_true)
 
-    return np.sum(np.square(y_true - y_pred)) / len(y_true) * 2
+    return np.sum(np.square(y_pred - y_true)) / len(y_true) * 2
 
 
-def squared_error(y_true: np.ndarray, y_pred: np.ndarray, derivative: bool = False) -> np.ndarray:
+def squared_error(y_pred: np.ndarray, y_true: np.ndarray, derivative: bool = False) -> np.ndarray:
     """
     Calculates the squared error (SE) between the true and predicted values.
 
@@ -30,4 +30,4 @@ def squared_error(y_true: np.ndarray, y_pred: np.ndarray, derivative: bool = Fal
     if derivative:
         return y_pred - y_true
 
-    return np.square(y_true - y_pred) / 2
+    return np.square(y_pred - y_true) / 2

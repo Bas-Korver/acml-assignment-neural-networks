@@ -4,37 +4,43 @@ import numpy as np
 
 
 class Layer:
-    def __init__(self, input_num: int, output_shape: int, activation_function: Callable, bias: bool, mu: float,
+    def __init__(self, input_shape: int, output_shape: int, activation_function: Callable, add_bias: bool, mu: float,
                  sigma: float):
         """
         Initializes a layer in the neural network.
 
-        :param input_num: Amount of input Neurons (amount of neurons in the previous layer).
+        :param input_shape: Amount of input Neurons (amount of neurons in the previous layer).
         :param output_shape: Amount of output Neurons (amount of neurons in the current layer).
         :param activation_function: Activation function to use.
-        :param bias: Whether to use bias.
+        :param add_bias: Whether to use bias.
         :param mu: Mean of the normal distribution used to initialize weights.
         :param sigma: Standard deviation of the normal distribution used to initialize weights.
         """
 
         self.activation_function = activation_function
+        self.add_bias = add_bias
+
         self.z = np.ndarray  # Sum of weighted activations.
         self.a = np.ndarray  # Activation function applied to z.
-
-        if bias:
-            self.weights = np.random.normal(mu, sigma, size=(output_shape, input_num + 1))
-        else:
-            self.weights = np.random.normal(mu, sigma, size=(output_shape, input_num))
+        # self.weights = np.random.normal(mu, sigma, size=(output_shape, input_shape))
+        self.weights = np.zeros((output_shape, input_shape))
+        self.bias = 0
+        if self.add_bias:
+            # self.bias = np.random.normal(mu, sigma, size=(output_shape, 1))
+            self.bias = np.zeros((output_shape, 1))
 
     def step(self, inputs: np.ndarray) -> np.ndarray:
         self.z = np.dot(inputs, self.weights.T)
+        if self.add_bias:
+            self.z += self.bias.T
+
         self.a = self.activation_function(self.z)
         return self.a
 
 
 class ANN:
     def __init__(self, input_num: int, hidden_layers: list[int], output_num: int,
-                 activation_functions: list[Callable] | Callable, cost_function: Callable, bias: bool = True,
+                 activation_functions: list[Callable] | Callable, cost_function: Callable, add_bias: bool = True,
                  mu: float = 0, sigma: float = 0.1):
         """
         Initializes the network.
@@ -44,22 +50,25 @@ class ANN:
         :param output_num: Amount of output Neurons.
         :param activation_functions: Activation function(s) to use.
         :param cost_function: Cost function to use.
-        :param bias: Whether to use bias.
+        :param add_bias: Whether to use bias.
         :param mu: Mean of the normal distribution used to initialize weights.
         :param sigma: Standard deviation of the normal distribution used to initialize weights.
         """
 
         self.shape = [input_num] + hidden_layers + [output_num]
-        self.bias = bias
+        self.add_bias = add_bias
         self.cost_function = cost_function
+        self.network = []
 
         if type(activation_functions) is not list:
             activation_functions = [activation_functions for _ in range(len(self.shape) - 1)]
         elif len(activation_functions) != len(self.shape) - 1:
             raise ValueError("The number of activation functions must be equal to the number of layers - 1")
 
-        self.network = [Layer(self.shape[i], self.shape[i + 1], activation_functions[i], self.bias, mu, sigma) for i in
-                        range(len(self.shape) - 1)]
+        self.network.append(Layer(self.shape[0], self.shape[1], activation_functions[0], False, mu, sigma))
+        self.network.extend(
+            [Layer(self.shape[i + 1], self.shape[i + 2], activation_functions[i], self.add_bias, mu, sigma) for i in
+             range(len(self.shape[1:]) - 1)])
 
     def feed_forward(self, input_data: np.ndarray) -> np.ndarray:
         """
@@ -72,31 +81,36 @@ class ANN:
         activation = input_data
 
         for layer in self.network:
-            if self.bias:
-                activation = np.concatenate((np.ones((activation.shape[0], 1)), activation), axis=1)
             activation = layer.step(activation)
 
         return activation
 
     def backpropagate(self, x: np.ndarray, y_true: np.ndarray):
-        delta = self.cost_function(self.network[-1].a, y_true, derivative=True)
-        delta = delta * self.network[-1].activation_function(self.network[-1].z, derivative=True)
-        gradients_list = [0 for _ in range(len(self.network))]
+        deltas = [0 for _ in range(len(self.network))]
+        weight_gradients = [0 for _ in range(len(self.network))]
+        if self.add_bias:
+            bias_gradients = [0 for _ in range(len(self.network) - 1)]
 
-        gradients_list[-1] = np.dot(delta.T, self.network[-2].a)
+        deltas[-1] = np.multiply(self.cost_function(self.network[-1].a, y_true, derivative=True),
+            self.network[-1].activation_function(self.network[-1].z, derivative=True))
 
-        for i in range(len(self.network[:-2]), -1, -1):
-            delta = np.dot(delta, self.network[i + 1].weights) * self.network[i].activation_function(self.network[i].z,
-                                                                                                     derivative=True)
+        for i in reversed(range(len(self.network[:-1]))):
+            deltas[i] = np.multiply(np.dot(deltas[i + 1], self.network[i + 1].weights),
+                self.network[i].activation_function(self.network[i].z, derivative=True))
 
+        # print(deltas)
+
+        for i in range(len(deltas)):
             if i == 0:
-                gradient = np.dot(delta.T, x)
+                weight_gradients[i] = np.dot(x.T, deltas[i])
             else:
-                gradient = np.dot(delta.T, self.network[i - 1].a)
+                weight_gradients[i] = np.dot(self.network[i - 1].a.T, deltas[i])
 
-            gradients_list[i] = gradient
+        if self.add_bias:
+            for i in range(len(deltas[1:])):
+                bias_gradients[i] = deltas[i + 1]
 
-        return gradients_list
+        return weight_gradients, bias_gradients
 
     def train(self, x, y, epochs, learning_rate, batch_size):
         """
@@ -117,8 +131,11 @@ class ANN:
 
                 self.feed_forward(batch_x)
 
-                gradients_list = self.backpropagate(batch_x, batch_y)
+                weight_gradients, bias_gradients = self.backpropagate(batch_x, batch_y)
 
-                # Update weights with accumulated gradients
                 for j in range(len(self.network)):
-                    self.network[j].weights -= learning_rate * gradients_list[j]
+                    self.network[j].weights -= learning_rate * weight_gradients[j].T
+
+                if self.add_bias:
+                    for j in range(len(self.network[1:])):
+                        self.network[j + 1].bias -= learning_rate * bias_gradients[j].T
