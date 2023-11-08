@@ -23,13 +23,11 @@ class Layer:
         self.z = np.ndarray  # Sum of weighted activations.
         self.a = np.ndarray  # Activation function applied to z.
         self.weights = weight_generation(output_shape, input_shape, **kwargs)
-        # self.weights = np.random.normal(mu, sigma, size=(output_shape, input_shape))
-        # self.weights = np.zeros((output_shape, input_shape))
+
         self.bias = 0
         if self.add_bias:
             self.bias = bias_generation(output_shape, input_shape, **kwargs)
             self.bias = np.zeros((output_shape, 1))
-            # self.bias = np.random.normal(mu, sigma, size=(output_shape, 1))
 
     def step(self, inputs: np.ndarray) -> np.ndarray:
         self.z = np.dot(inputs, self.weights.T)
@@ -69,7 +67,6 @@ class ANN:
         elif len(activation_functions) != len(self.shape) - 1:
             raise ValueError("The number of activation functions must be equal to the number of layers - 1")
 
-        # self.network.append(Layer(self.shape[0], self.shape[1], activation_functions[0], False, mu, sigma))
         self.network.append(Layer(self.shape[0], self.shape[1], activation_functions[0], weight_generation, bias_generation, False, **kwargs))
         self.network.extend(
             [Layer(self.shape[i + 1], self.shape[i + 2], activation_functions[i], weight_generation, bias_generation, self.add_bias, **kwargs) for i in

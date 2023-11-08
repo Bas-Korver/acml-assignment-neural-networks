@@ -10,13 +10,15 @@ if __name__ == "__main__":
     training_examples = np.identity(8)
 
     number_generation_kwargs = {'mu': 0, 'sigma': 0.1}
-    ann = ann.ANN(8, [8], 8, sigmoid, squared_error, normal, zeros, add_bias=True, **number_generation_kwargs)
-    ann.train(training_examples, training_examples, 1000, 0.1)
+    ann = ann.ANN(8, [3], 8, sigmoid, squared_error, normal, zeros, add_bias=False, **number_generation_kwargs)
+    ann.train(training_examples, training_examples, 10000, 0.1)
 
     predictions = ann.feed_forward(training_examples)
 
     for i, prediction in enumerate(predictions):
         print(f"input: {training_examples[i]}, output: {np.around(prediction, 2)}")
+
+
 
 
 
