@@ -4,8 +4,8 @@ import numpy as np
 
 
 class Layer:
-    def __init__(self, input_shape: int, output_shape: int, activation_function: Callable, add_bias: bool, mu: float,
-                 sigma: float):
+    def __init__(self, input_shape: int, output_shape: int, activation_function: Callable, weight_generation: Callable,
+                 bias_generation: Callable, add_bias: bool, **kwargs):
         """
         Initializes a layer in the neural network.
 
@@ -22,12 +22,14 @@ class Layer:
 
         self.z = np.ndarray  # Sum of weighted activations.
         self.a = np.ndarray  # Activation function applied to z.
-        self.weights = np.random.normal(mu, sigma, size=(output_shape, input_shape))
+        self.weights = weight_generation(output_shape, input_shape, **kwargs)
+        # self.weights = np.random.normal(mu, sigma, size=(output_shape, input_shape))
         # self.weights = np.zeros((output_shape, input_shape))
         self.bias = 0
         if self.add_bias:
-            # self.bias = np.random.normal(mu, sigma, size=(output_shape, 1))
+            self.bias = bias_generation(output_shape, input_shape, **kwargs)
             self.bias = np.zeros((output_shape, 1))
+            # self.bias = np.random.normal(mu, sigma, size=(output_shape, 1))
 
     def step(self, inputs: np.ndarray) -> np.ndarray:
         self.z = np.dot(inputs, self.weights.T)
@@ -40,8 +42,8 @@ class Layer:
 
 class ANN:
     def __init__(self, input_num: int, hidden_layers: list[int], output_num: int,
-                 activation_functions: list[Callable] | Callable, cost_function: Callable, add_bias: bool = True,
-                 mu: float = 0, sigma: float = 0.1):
+                 activation_functions: list[Callable] | Callable, cost_function: Callable, weight_generation: Callable,
+                 bias_generation: Callable, add_bias: bool = True, **kwargs):
         """
         Initializes the network.
 
@@ -50,6 +52,8 @@ class ANN:
         :param output_num: Amount of output Neurons.
         :param activation_functions: Activation function(s) to use.
         :param cost_function: Cost function to use.
+        :param weight_generation: Function to generate weights.
+        :param bias_generation: Function to generate biases.
         :param add_bias: Whether to use bias.
         :param mu: Mean of the normal distribution used to initialize weights.
         :param sigma: Standard deviation of the normal distribution used to initialize weights.
@@ -65,9 +69,10 @@ class ANN:
         elif len(activation_functions) != len(self.shape) - 1:
             raise ValueError("The number of activation functions must be equal to the number of layers - 1")
 
-        self.network.append(Layer(self.shape[0], self.shape[1], activation_functions[0], False, mu, sigma))
+        # self.network.append(Layer(self.shape[0], self.shape[1], activation_functions[0], False, mu, sigma))
+        self.network.append(Layer(self.shape[0], self.shape[1], activation_functions[0], weight_generation, bias_generation, False, **kwargs))
         self.network.extend(
-            [Layer(self.shape[i + 1], self.shape[i + 2], activation_functions[i], self.add_bias, mu, sigma) for i in
+            [Layer(self.shape[i + 1], self.shape[i + 2], activation_functions[i], weight_generation, bias_generation, self.add_bias, **kwargs) for i in
              range(len(self.shape[1:]) - 1)])
 
     def feed_forward(self, input_data: np.ndarray) -> np.ndarray:
@@ -127,7 +132,7 @@ class ANN:
             for i in range(0, len(x)):
                 batch_x = x[i:i + 1]
                 batch_y = y[i:i + 1]
-                
+
                 self.feed_forward(batch_x)
 
                 weight_gradients, bias_gradients = self.backpropagate(batch_x, batch_y)
