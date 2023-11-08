@@ -26,7 +26,7 @@ class Layer:
 
         self.bias = 0
         if self.add_bias:
-            self.bias = bias_generation(output_shape, input_shape, **kwargs)
+            self.bias = bias_generation(output_shape, 1, **kwargs)
             self.bias = np.zeros((output_shape, 1))
 
     def step(self, inputs: np.ndarray) -> np.ndarray:
@@ -67,10 +67,12 @@ class ANN:
         elif len(activation_functions) != len(self.shape) - 1:
             raise ValueError("The number of activation functions must be equal to the number of layers - 1")
 
-        self.network.append(Layer(self.shape[0], self.shape[1], activation_functions[0], weight_generation, bias_generation, False, **kwargs))
-        self.network.extend(
-            [Layer(self.shape[i + 1], self.shape[i + 2], activation_functions[i], weight_generation, bias_generation, self.add_bias, **kwargs) for i in
-             range(len(self.shape[1:]) - 1)])
+        self.network.append(
+            Layer(self.shape[0], self.shape[1], activation_functions[0], weight_generation, bias_generation, False,
+                  **kwargs))
+        self.network.extend([
+            Layer(self.shape[i + 1], self.shape[i + 2], activation_functions[i], weight_generation, bias_generation,
+                  self.add_bias, **kwargs) for i in range(len(self.shape[1:]) - 1)])
 
     def feed_forward(self, input_data: np.ndarray) -> np.ndarray:
         """
@@ -93,11 +95,11 @@ class ANN:
         bias_gradients = [0 for _ in range(len(self.network) - 1)]
 
         deltas[-1] = np.multiply(self.cost_function(self.network[-1].a, y_true, derivative=True),
-            self.network[-1].activation_function(self.network[-1].z, derivative=True))
+                                 self.network[-1].activation_function(self.network[-1].z, derivative=True))
 
         for i in reversed(range(len(self.network[:-1]))):
             deltas[i] = np.multiply(np.dot(deltas[i + 1], self.network[i + 1].weights),
-                self.network[i].activation_function(self.network[i].z, derivative=True))
+                                    self.network[i].activation_function(self.network[i].z, derivative=True))
 
         for i in range(len(deltas)):
             if i == 0:
