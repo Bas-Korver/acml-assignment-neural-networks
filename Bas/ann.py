@@ -22,8 +22,8 @@ class Layer:
 
         self.z = np.ndarray  # Sum of weighted activations.
         self.a = np.ndarray  # Activation function applied to z.
-        # self.weights = np.random.normal(mu, sigma, size=(output_shape, input_shape))
-        self.weights = np.zeros((output_shape, input_shape))
+        self.weights = np.random.normal(mu, sigma, size=(output_shape, input_shape))
+        # self.weights = np.zeros((output_shape, input_shape))
         self.bias = 0
         if self.add_bias:
             # self.bias = np.random.normal(mu, sigma, size=(output_shape, 1))
@@ -88,8 +88,7 @@ class ANN:
     def backpropagate(self, x: np.ndarray, y_true: np.ndarray):
         deltas = [0 for _ in range(len(self.network))]
         weight_gradients = [0 for _ in range(len(self.network))]
-        if self.add_bias:
-            bias_gradients = [0 for _ in range(len(self.network) - 1)]
+        bias_gradients = [0 for _ in range(len(self.network) - 1)]
 
         deltas[-1] = np.multiply(self.cost_function(self.network[-1].a, y_true, derivative=True),
             self.network[-1].activation_function(self.network[-1].z, derivative=True))
@@ -97,8 +96,6 @@ class ANN:
         for i in reversed(range(len(self.network[:-1]))):
             deltas[i] = np.multiply(np.dot(deltas[i + 1], self.network[i + 1].weights),
                 self.network[i].activation_function(self.network[i].z, derivative=True))
-
-        # print(deltas)
 
         for i in range(len(deltas)):
             if i == 0:
@@ -112,23 +109,25 @@ class ANN:
 
         return weight_gradients, bias_gradients
 
-    def train(self, x, y, epochs, learning_rate, batch_size):
+    def train(self, x, y, epochs, learning_rate):
         """
         Train the neural network using backpropagation with mini-batch training.
 
-        :param x: A list of (input, target) pairs for training
-        :param epochs: The number of training epochs
-        :param learning_rate: The learning rate for weight updates
-        :param batch_size: The size of each mini-batch
+        :param x: A list of (input, target) pairs for training.
+        :param epochs: The number of training epochs.
+        :param batch_size: The size of each mini-batch.
         """
 
         for epoch in range(epochs):
-            np.random.shuffle(x)  # Shuffle the training data for each epoch
+            randomize = np.arange(len(x))
+            np.random.shuffle(randomize)  # Shuffle the training data for each epoch.
+            x = x[randomize]
+            y = y[randomize]
 
-            for i in range(0, len(x), batch_size):
-                batch_x = x[i:i + batch_size]
-                batch_y = y[i:i + batch_size]
-
+            for i in range(0, len(x)):
+                batch_x = x[i:i + 1]
+                batch_y = y[i:i + 1]
+                
                 self.feed_forward(batch_x)
 
                 weight_gradients, bias_gradients = self.backpropagate(batch_x, batch_y)
